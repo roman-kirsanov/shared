@@ -10,21 +10,39 @@ export type Shared<T> = {
 }
 
 export const createShared = <T>(defaultValue: T): Shared<T> => {
-    let _listeners: SharedListener<T>[] = [];
+    let _subs: SharedListener<T>[] = [];
     let _value: T = defaultValue;
     const get = () => _value;
     const set = (value: T) => {
         _value = value;
-        _listeners.forEach(listener => listener(_value));
+        _subs.forEach(listener => listener(_value));
     }
     const on = (listener: SharedListener<T>) => {
-        _listeners.push(listener);
+        _subs.push(listener);
         return listener;
     }
     const off = (listener: SharedListener<T>) => {
-        _listeners = _listeners.filter(l => l != listener);
+        _subs = _subs.filter(l => l != listener);
     }
     return { get, set, on, off }
+}
+
+export const createStorageShared = <T>(storage: Storage, key: string, defaultValue: T): Shared<T> => {
+    const type = (typeof defaultValue);
+    const item = `__shared_${key}_${type}`;
+    const json = storage.getItem(item);
+    const shared = (() => {
+        if (json) {
+            return createShared<T>((() => {
+                try { return (JSON.parse(json)?.value ?? defaultValue); }
+                catch (e) { return defaultValue; }
+            })());
+        } else {
+            return createShared<T>(defaultValue);
+        }
+    })()
+    shared.on(value => storage.setItem(item, JSON.stringify({ value })));
+    return shared;
 }
 
 export type SharedHook<T> = [ T, (value: T) => void ];
