@@ -52,6 +52,6 @@ export const useShared = <T>(shared: Shared<T>): SharedHook<T> => {
     useEffect(() => {
         const listener = shared.on((value: T) => setValue(value));
         return () => shared.off(listener);
-    }, []);
+    }, [shared]);
     return [ value, (value: T) => shared.set(value) ];
 }
