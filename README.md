@@ -1,6 +1,6 @@
 ## Usage
 
-```typescript
+```tsx
 import { createShared, useShared } from 'shared'
 
 const firstNameShared = createShared<string>('');
