@@ -3,19 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.useShared = exports.createStorageShared = exports.createShared = void 0;
 const react_1 = require("react");
 const createShared = (defaultValue) => {
-    let _subs = [];
     let _value = defaultValue;
+    let _subs = [];
     const get = () => _value;
     const set = (value) => {
-        _value = value;
-        _subs.forEach(listener => listener(_value));
+        if (_value !== value) {
+            _value = value;
+            for (const listener of _subs) {
+                listener(_value);
+            }
+        }
     };
     const on = (listener) => {
-        _subs.push(listener);
+        _subs = [..._subs, listener];
         return listener;
     };
     const off = (listener) => {
-        _subs = _subs.filter(l => l != listener);
+        _subs = _subs.filter(l => l !== listener);
     };
     return { get, set, on, off };
 };
@@ -45,11 +49,14 @@ const createStorageShared = (storage, key, defaultValue) => {
 };
 exports.createStorageShared = createStorageShared;
 const useShared = (shared) => {
-    const [value, setValue] = (0, react_1.useState)(shared.get());
+    const [, setDummy] = (0, react_1.useState)(0);
     (0, react_1.useEffect)(() => {
-        const listener = shared.on((value) => setValue(value));
+        const listener = shared.on(() => setDummy(prev => prev + 1));
         return () => shared.off(listener);
-    }, []);
-    return [value, (value) => shared.set(value)];
+    }, [shared]);
+    return [
+        shared.get(),
+        (value) => shared.set(value)
+    ];
 };
 exports.useShared = useShared;

@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 export const createShared = (defaultValue) => {
-    let _subs = [];
     let _value = defaultValue;
+    let _subs = [];
     const get = () => _value;
     const set = (value) => {
-        _value = value;
-        _subs.forEach(listener => listener(_value));
+        if (_value !== value) {
+            _value = value;
+            for (const listener of _subs) {
+                listener(_value);
+            }
+        }
     };
     const on = (listener) => {
-        _subs.push(listener);
+        _subs = [..._subs, listener];
         return listener;
     };
     const off = (listener) => {
-        _subs = _subs.filter(l => l != listener);
+        _subs = _subs.filter(l => l !== listener);
     };
     return { get, set, on, off };
 };
@@ -40,10 +44,13 @@ export const createStorageShared = (storage, key, defaultValue) => {
     return shared;
 };
 export const useShared = (shared) => {
-    const [value, setValue] = useState(shared.get());
+    const [, setDummy] = useState(0);
     useEffect(() => {
-        const listener = shared.on((value) => setValue(value));
+        const listener = shared.on(() => setDummy(prev => prev + 1));
         return () => shared.off(listener);
-    }, []);
-    return [value, (value) => shared.set(value)];
+    }, [shared]);
+    return [
+        shared.get(),
+        (value) => shared.set(value)
+    ];
 };
