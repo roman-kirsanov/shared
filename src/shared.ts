@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 export type SharedListener<T> = (value: T) => void;
 
@@ -7,11 +7,12 @@ export type Shared<T> = {
     set: (value: T) => void;
     on: (listener: SharedListener<T>) => SharedListener<T>;
     off: (listener: SharedListener<T>) => void;
+    subscribe: (listener: SharedListener<T>) => () => void;
 }
 
 export const createShared = <T>(defaultValue: T): Shared<T> => {
     let _value: T = defaultValue;
-    let _subs: SharedListener<T>[] = [];
+    let _subs: Set<SharedListener<T>> = new Set<SharedListener<T>>();
     const get = () => _value;
     const set = (value: T) => {
         if (_value !== value) {
@@ -22,13 +23,20 @@ export const createShared = <T>(defaultValue: T): Shared<T> => {
         }
     }
     const on = (listener: SharedListener<T>) => {
-        _subs = [ ..._subs, listener ];
+        _subs.add(listener);
         return listener;
     }
     const off = (listener: SharedListener<T>) => {
-        _subs = _subs.filter(l => l !== listener);
+        _subs.delete(listener);
     }
-    return { get, set, on, off }
+    const subscribe = (listener: SharedListener<T>) => {
+        on(listener);
+
+        return () => {
+            off(listener);
+        }
+    }
+    return { get, set, on, off, subscribe }
 }
 
 export const createStorageShared = <T>(storage: Storage, key: string, defaultValue: T): Shared<T> => {
@@ -52,13 +60,7 @@ export const createStorageShared = <T>(storage: Storage, key: string, defaultVal
 export type SharedHook<T> = [T, (value: T) => void ];
 
 export const useShared = <T>(shared: Shared<T>): SharedHook<T> => {
-    const [ , setDummy ] = useState<number>(0);
-    useEffect(() => {
-        const listener = shared.on(() => setDummy(prev => prev + 1));
-        return () => shared.off(listener);
-    }, [shared]);
-    return [
-        shared.get(),
-        (value: T) => shared.set(value)
-    ];
+    const value = useSyncExternalStore(shared.subscribe, shared.get);
+
+    return [ value, (value: T) => shared.set(value) ];
 }

@@ -4,7 +4,7 @@ exports.useShared = exports.createStorageShared = exports.createShared = void 0;
 const react_1 = require("react");
 const createShared = (defaultValue) => {
     let _value = defaultValue;
-    let _subs = [];
+    let _subs = new Set();
     const get = () => _value;
     const set = (value) => {
         if (_value !== value) {
@@ -15,13 +15,19 @@ const createShared = (defaultValue) => {
         }
     };
     const on = (listener) => {
-        _subs = [..._subs, listener];
+        _subs.add(listener);
         return listener;
     };
     const off = (listener) => {
-        _subs = _subs.filter(l => l !== listener);
+        _subs.delete(listener);
     };
-    return { get, set, on, off };
+    const subscribe = (listener) => {
+        on(listener);
+        return () => {
+            off(listener);
+        };
+    };
+    return { get, set, on, off, subscribe };
 };
 exports.createShared = createShared;
 const createStorageShared = (storage, key, defaultValue) => {
@@ -49,14 +55,7 @@ const createStorageShared = (storage, key, defaultValue) => {
 };
 exports.createStorageShared = createStorageShared;
 const useShared = (shared) => {
-    const [, setDummy] = (0, react_1.useState)(0);
-    (0, react_1.useEffect)(() => {
-        const listener = shared.on(() => setDummy(prev => prev + 1));
-        return () => shared.off(listener);
-    }, [shared]);
-    return [
-        shared.get(),
-        (value) => shared.set(value)
-    ];
+    const value = (0, react_1.useSyncExternalStore)(shared.subscribe, shared.get);
+    return [value, (value) => shared.set(value)];
 };
 exports.useShared = useShared;

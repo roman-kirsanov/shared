@@ -4,6 +4,7 @@ export type Shared<T> = {
     set: (value: T) => void;
     on: (listener: SharedListener<T>) => SharedListener<T>;
     off: (listener: SharedListener<T>) => void;
+    subscribe: (listener: SharedListener<T>) => () => void;
 };
 export declare const createShared: <T>(defaultValue: T) => Shared<T>;
 export declare const createStorageShared: <T>(storage: Storage, key: string, defaultValue: T) => Shared<T>;
